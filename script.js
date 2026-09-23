@@ -136,6 +136,12 @@ const membershipStatus = $("#membershipStatus");
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabasePublishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+function getSupabaseError(response, fallback) {
+  return response.json()
+    .then(details => details.message || details.hint || details.error || fallback)
+    .catch(() => fallback);
+}
+
 function validateFields(form) {
   let valid = true;
   $$('input[required], textarea[required], select[required]', form).forEach(field => {
@@ -163,6 +169,11 @@ contactForm.addEventListener("submit", async e => {
     formStatus.className = "form-status error";
     return;
   }
+  if (!supabaseUrl || !supabasePublishableKey) {
+    formStatus.textContent = "Le service de contact n’est pas configuré. Contactez AMC pour finaliser votre demande.";
+    formStatus.className = "form-status error";
+    return;
+  }
 
   const formData = Object.fromEntries(new FormData(contactForm));
   const submitButton = $("button[type=submit]", contactForm);
@@ -182,7 +193,9 @@ contactForm.addEventListener("submit", async e => {
       body: JSON.stringify(formData)
     });
 
-    if (!response.ok) throw new Error(`Supabase returned ${response.status}`);
+    if (!response.ok) {
+      throw new Error(await getSupabaseError(response, `Supabase returned ${response.status}`));
+    }
 
     formStatus.textContent = "Votre message a bien été envoyé.";
     formStatus.className = "form-status success";
